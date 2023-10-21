@@ -15,9 +15,8 @@ This should be verey similar to the how training is done in the LTR toy program.
 def train(xgb_train_data, num_rounds=5, xgb_params=None ):
     # print("IMPLEMENT ME: xgb train")
     dtrain = xgb.DMatrix(f'{xgb_train_data}?format=libsvm')
-    num_round = 5
     print("Training XG Boost")
-    bst = xgb.train(xgb_params, dtrain, num_round)
+    bst = xgb.train(xgb_params, dtrain, num_rounds)
     return bst
 
 
