@@ -133,10 +133,11 @@ def extract_logged_features(hits, query_id):
     feature_results["name_match"] = []
     rng = np.random.default_rng(12345)
     for (idx, hit) in enumerate(hits):
-        print(f">>>> HIT: {hit['matched_queries']}")
         feature_results["doc_id"].append(int(hit['_id']))  # capture the doc id so we can join later
         feature_results["query_id"].append(query_id)  # super redundant, but it will make it easier to join later
         feature_results["sku"].append(int(hit['_id']))
-        feature_results["name_match"].append(rng.random())
+        # PERSO: if there are other features, revisit this part
+        print(f"HIT: {hit['fields']['_ltrlog'][0]['log_entry']}")
+        feature_results["name_match"].append(hit['fields']['_ltrlog'][0]['log_entry']) 
     frame = pd.DataFrame(feature_results)
     return frame.astype({'doc_id': 'int64', 'query_id': 'int64', 'sku': 'int64'})
