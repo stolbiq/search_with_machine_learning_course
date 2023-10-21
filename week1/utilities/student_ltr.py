@@ -110,7 +110,7 @@ def create_rescore_ltr_query(user_query: str, query_obj, click_prior_query: str,
                 }
             },
             "rescore_query_weight": rescore_query_weight # Magic number, but let's say LTR matches are 2x baseline matches
-        }
+        },
     }
 
 
@@ -125,19 +125,18 @@ and extract the features into a data frame.
 def extract_logged_features(hits, query_id):
     import numpy as np
     import pandas as pd
-    print("IMPLEMENT ME: __log_ltr_query_features: Extract log features out of the LTR:EXT response and place in a data frame")
+    # print("IMPLEMENT ME: __log_ltr_query_features: Extract log features out of the LTR:EXT response and place in a data frame")
     feature_results = {}
     feature_results["doc_id"] = []  # capture the doc id so we can join later
     feature_results["query_id"] = []  # ^^^
     feature_results["sku"] = []
     feature_results["name_match"] = []
-    rng = np.random.default_rng(12345)
+    # rng = np.random.default_rng(12345)
     for (idx, hit) in enumerate(hits):
         feature_results["doc_id"].append(int(hit['_id']))  # capture the doc id so we can join later
         feature_results["query_id"].append(query_id)  # super redundant, but it will make it easier to join later
         feature_results["sku"].append(int(hit['_id']))
-        # PERSO: if there are other features, revisit this part
-        print(f"HIT: {hit['fields']['_ltrlog'][0]['log_entry']}")
-        feature_results["name_match"].append(hit['fields']['_ltrlog'][0]['log_entry']) 
+        name_match_value = hit['fields']['_ltrlog'][0]['log_entry']
+        feature_results["name_match"].append(name_match_value['value'] if 'value' in name_match_value else 0) 
     frame = pd.DataFrame(feature_results)
-    return frame.astype({'doc_id': 'int64', 'query_id': 'int64', 'sku': 'int64'})
+    return frame.astype({'doc_id': 'int64', 'query_id': 'int64', 'sku': 'int64', 'name_match': 'float'})
