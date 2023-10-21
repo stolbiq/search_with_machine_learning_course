@@ -13,7 +13,14 @@ This should be verey similar to the how training is done in the LTR toy program.
 :param dictionary xgb_params The XGBoost configuration parameters, such as the objective function, e.g. {'objective': 'reg:logistic'} 
 '''
 def train(xgb_train_data, num_rounds=5, xgb_params=None ):
-    print("IMPLEMENT ME: xgb train")
+    # print("IMPLEMENT ME: xgb train")
+    dtrain = xgb.DMatrix(f'{xgb_train_data.name}?format=libsvm')
+    num_round = 5
+    print("Training XG Boost")
+    bst = xgb.train(xgb_params, dtrain, num_round)
+    return bst
+
+
 
 ##### Step 3.b:
 '''
@@ -35,7 +42,7 @@ all features for all documents in a single query.  See the course content for mo
 :param string terms_field: The name of the field to filter our doc_ids on 
 '''
 def create_feature_log_query(query, doc_ids, click_prior_query, featureset_name, ltr_store_name, size=200, terms_field="_id"):
-    print("IMPLEMENT ME: create_feature_log_query with proper LTR syntax")
+    # print("IMPLEMENT ME: create_feature_log_query with proper LTR syntax")
     return {
         'size': size,
         'query': {
@@ -44,6 +51,16 @@ def create_feature_log_query(query, doc_ids, click_prior_query, featureset_name,
                     {
                         "terms": {
                             terms_field: doc_ids
+                        }
+                    },
+                    {  # use the LTR query bring in the LTR feature set
+                        "sltr": {
+                            "_name": "logged_featureset",
+                            "featureset": featureset_name,
+                            "store": ltr_store_name,
+                            "params": {
+                                "keywords": query
+                            }
                         }
                     }
                 ]
