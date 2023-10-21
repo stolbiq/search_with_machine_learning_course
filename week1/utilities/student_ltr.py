@@ -64,6 +64,14 @@ def create_feature_log_query(query, doc_ids, click_prior_query, featureset_name,
                     }
                 ]
             }
+        },
+        "ext": {
+            "ltr_log": {
+                "log_specs": {
+                    "name": "log_entry",
+                    "named_query": "logged_featureset"
+                }
+            }
         }
     }
 
@@ -125,6 +133,7 @@ def extract_logged_features(hits, query_id):
     feature_results["name_match"] = []
     rng = np.random.default_rng(12345)
     for (idx, hit) in enumerate(hits):
+        print(f">>>> HIT: {hit['matched_queries']}")
         feature_results["doc_id"].append(int(hit['_id']))  # capture the doc id so we can join later
         feature_results["query_id"].append(query_id)  # super redundant, but it will make it easier to join later
         feature_results["sku"].append(int(hit['_id']))
