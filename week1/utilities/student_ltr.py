@@ -135,12 +135,31 @@ def extract_logged_features(hits, query_id):
     feature_results["query_id"] = []  # ^^^
     feature_results["sku"] = []
     feature_results["name_match"] = []
+    feature_results["name_match_phrase"] = []
+    feature_results["customer_review_average"] = []
+    feature_results["customer_review_count"] = []
+    feature_results["artist_name_match"] = []
+    feature_results["short_description_match"] = []
+    feature_results["long_description_match"] = []
+    feature_results["sales_rank_short_term"] = []
+    feature_results["sales_rank_medium_term"] = []
+    feature_results["sales_rank_long_term"] = []
     # rng = np.random.default_rng(12345)
     for (idx, hit) in enumerate(hits):
         feature_results["doc_id"].append(int(hit['_id']))  # capture the doc id so we can join later
         feature_results["query_id"].append(query_id)  # super redundant, but it will make it easier to join later
         feature_results["sku"].append(int(hit['_id']))
-        name_match_value = hit['fields']['_ltrlog'][0]['log_entry']
-        feature_results["name_match"].append(name_match_value['value'] if 'value' in name_match_value else 0) 
+        feature_value = hit['fields']['_ltrlog'][0]['log_entry']
+        # print(f"FEATURES: {feature_value}")
+        feature_results["name_match"].append(feature_value[0]['value'] if 'value' in feature_value[0] else 0) 
+        feature_results["name_match_phrase"].append(feature_value[1]['value'] if 'value' in feature_value[1] else 0) 
+        feature_results["customer_review_average"].append(feature_value[2]['value'] if 'value' in feature_value[2] else 0) 
+        feature_results["customer_review_count"].append(feature_value[3]['value'] if 'value' in feature_value[3] else 0) 
+        feature_results["artist_name_match"].append(feature_value[4]['value'] if 'value' in feature_value[4] else 0) 
+        feature_results["short_description_match"].append(feature_value[5]['value'] if 'value' in feature_value[5] else 0) 
+        feature_results["long_description_match"].append(feature_value[6]['value'] if 'value' in feature_value[6] else 0) 
+        feature_results["sales_rank_short_term"].append(feature_value[7]['value'] if 'value' in feature_value[7] else 0) 
+        feature_results["sales_rank_medium_term"].append(feature_value[8]['value'] if 'value' in feature_value[8] else 0) 
+        feature_results["sales_rank_long_term"].append(feature_value[9]['value'] if 'value' in feature_value[9] else 0) 
     frame = pd.DataFrame(feature_results)
-    return frame.astype({'doc_id': 'int64', 'query_id': 'int64', 'sku': 'int64', 'name_match': 'float'})
+    return frame.astype({'doc_id': 'int64', 'query_id': 'int64', 'sku': 'int64'})
