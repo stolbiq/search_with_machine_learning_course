@@ -168,16 +168,14 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
         }
     }
     if synonyms: 
-        query_obj["query"]["function_score"]["query"]["bool"]["should"].append({
-            {
-                "match": {
-                    "name.synonyms": {
-                        "query": user_query,
-                        "fuzziness": "1",
-                        "prefix_length": 2,
-                        # short words are often acronyms or usually not misspelled, so don't edit
-                        "boost": 0.01
-                    }
+        query_obj["query"]["function_score"]["query"]["bool"]["should"].append({       
+            "match": {
+                "name.synonyms": {
+                    "query": user_query,
+                    "fuzziness": "1",
+                    "prefix_length": 2,
+                    # short words are often acronyms or usually not misspelled, so don't edit
+                    "boost": 0.01
                 }
             }
         })
