@@ -19,5 +19,6 @@ def get_synonyms_string(word, model, similarity_threshold=0.75) -> str:
 with open(output_file, "w") as file:
     for word in words:
         synonyms_string = get_synonyms_string(word, model)
-        file.write(synonyms_string + "\n")
-
+        # This part helps us to avoid cases when no relevant synonyms found for a given word
+        if ',' in synonyms_string:
+            file.write(synonyms_string + "\n")
