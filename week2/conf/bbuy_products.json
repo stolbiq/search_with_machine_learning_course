@@ -10,8 +10,8 @@
           ]
         },
         "synonym": {
-          "tokenizer": "standard",
-          "filter": [ "synonym_filter" ]
+          "tokenizer": "whitespace",
+          "filter": [ "stemmer", "synonym_filter" ]
         }
       },
       "tokenizer": {
