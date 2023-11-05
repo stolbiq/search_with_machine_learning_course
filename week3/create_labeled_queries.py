@@ -50,10 +50,13 @@ queries_df = pd.read_csv(queries_file_name)[['category', 'query']]
 queries_df = queries_df[queries_df['category'].isin(categories)]
 
 # IMPLEMENT ME: Convert queries to lowercase, and optionally implement other normalization, like stemming.
-queries_df['query'] = queries_df['query'].str.lower().apply(
-    lambda x: re.sub(r'[^a-zA-Z0-9]', ' ', x)).apply(
-        lambda x: re.sub(r'\s+', ' ', x).strip()
-    ).apply(stemmer.stem)
+def normalisation(text):
+    return ' '.join(stemmer.stem(word) for word in re.sub(r'[^a-zA-Z0-9]', ' ', str.lower(text)).split())
+
+# Unit test
+print(normalisation("Beats By Dr. Dre- Monster Pro Over-the-Ear Headphones -") == "beat by dr dre monster pro over the ear headphon")
+
+queries_df['query'] = queries_df['query'].apply(normalisation)
 
 # IMPLEMENT ME: Roll up categories to ancestors to satisfy the minimum number of queries per category.
 value_counts = queries_df['category'].value_counts().reset_index()
@@ -71,7 +74,7 @@ while min(value_counts['count']) < min_queries:
 
 print(queries_df[queries_df['query'] == 'beat by dr dre monster pro over the ear headphon'])
 
-print(queries_df['category'].nunique())
+print("Number of unique categories: ", queries_df['category'].nunique())
 
 # Create labels in fastText format.
 queries_df['label'] = '__label__' + queries_df['category']
