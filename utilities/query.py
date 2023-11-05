@@ -191,12 +191,34 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
 def search(client, user_query, index="bbuy_products", sort="_score", sortDir="desc", synonyms=False):
     #### W3: classify the query
     model = fasttext.load_model('/workspace/datasets/fasttext/queries_classifier_v2.bin')
+    threshold = 0.5
     predictions = model.predict(user_query)
     labels = [res.replace('__label__', '') for res in predictions[0]]
     scores = list(predictions[1])
-    #### W3: create filters and boosts
+    print(labels, scores)
+    filters = None
+
+    current_labels = []
+    summed_score = 0
+    filtered_labels = None
+    for score, idx in enumerate(scores):
+        summed_score += score
+        current_labels.append(labels[idx])
+        if summed_score >= threshold:
+            filtered_labels = current_labels
+            break
+    if filtered_labels is not None:
+        filters = [
+            {
+                "terms": {
+                    "categoryPathIds": filtered_labels
+                }
+            }
+        ]
+
+
     # Note: you may also want to modify the `create_query` method above
-    query_obj = create_query(user_query, click_prior_query=None, filters=None, sort=sort, sortDir=sortDir, source=["name", "shortDescription"], synonyms=synonyms)
+    query_obj = create_query(user_query, click_prior_query=None, filters=filters, sort=sort, sortDir=sortDir, source=["name", "shortDescription"], synonyms=synonyms)
     logging.info(query_obj)
     response = client.search(query_obj, index=index)
     if response and response['hits']['hits'] and len(response['hits']['hits']) > 0:
@@ -219,7 +241,7 @@ if __name__ == "__main__":
     general.add_argument('--user',
                          help='The OpenSearch admin.  If this is set, the program will prompt for password too. If not set, use default of admin/admin')
 
-    general.add_argument('--synonyms', type=int, default=0, help='Run the query using synonyms os the name field')
+    # general.add_argument('--synonyms', type=int, default=0, help='Run the query using synonyms os the name field')
     args = parser.parse_args()
 
     if len(vars(args)) == 0:
@@ -228,7 +250,7 @@ if __name__ == "__main__":
 
     host = args.host
     port = args.port
-    synonyms = True if args.synonyms != 0 else False
+    synonyms = True
 
     if args.user:
         password = getpass()
