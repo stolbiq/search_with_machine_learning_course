@@ -201,7 +201,7 @@ def search(client, user_query, index="bbuy_products", sort="_score", sortDir="de
     current_labels = []
     summed_score = 0
     filtered_labels = None
-    for score, idx in enumerate(scores):
+    for idx, score in enumerate(scores):
         summed_score += score
         current_labels.append(labels[idx])
         if summed_score >= threshold:
