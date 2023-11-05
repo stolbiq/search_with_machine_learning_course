@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 import pandas as pd
 import numpy as np
 import csv
+import re
 
 # Useful if you want to perform stemming.
 import nltk
@@ -49,7 +50,10 @@ queries_df = pd.read_csv(queries_file_name)[['category', 'query']]
 queries_df = queries_df[queries_df['category'].isin(categories)]
 
 # IMPLEMENT ME: Convert queries to lowercase, and optionally implement other normalization, like stemming.
-queries_df['query'] = queries_df['query'].str.lower().apply(stemmer.stem)
+queries_df['query'] = queries_df['query'].str.lower().apply(
+    lambda x: re.sub(r'[^a-zA-Z0-9]', ' ', x)).apply(
+        lambda x: re.sub(r'\s+', ' ', x).strip()
+    ).apply(stemmer.stem)
 
 # IMPLEMENT ME: Roll up categories to ancestors to satisfy the minimum number of queries per category.
 value_counts = queries_df['category'].value_counts().reset_index()
@@ -64,6 +68,10 @@ while min(value_counts['count']) < min_queries:
     value_counts = queries_df['category'].value_counts().reset_index()
     value_counts.columns = ['category', 'count']
 
+
+print(queries_df[queries_df['query'] == 'beat by dr dre monster pro over the ear headphon'])
+
+print(queries_df['category'].nunique())
 
 # Create labels in fastText format.
 queries_df['label'] = '__label__' + queries_df['category']
