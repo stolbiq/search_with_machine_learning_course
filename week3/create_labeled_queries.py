@@ -72,8 +72,6 @@ while min(value_counts['count']) < min_queries:
     value_counts.columns = ['category', 'count']
 
 
-print(queries_df[queries_df['query'] == 'beat by dr dre monster pro over the ear headphon'])
-
 print("Number of unique categories: ", queries_df['category'].nunique())
 
 # Create labels in fastText format.
