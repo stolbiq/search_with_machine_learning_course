@@ -11,6 +11,7 @@ from urllib.parse import urljoin
 import pandas as pd
 import fileinput
 import logging
+import fasttext
 
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,7 @@ def create_prior_queries(doc_ids, doc_id_weights,
 
 # Hardcoded query here.  Better to use search templates or other query config.
 def create_query(user_query, click_prior_query, filters, sort="_score", sortDir="desc", size=10, source=None, synonyms=False):
+    name_field = "name.synonyms" if synonyms else "name"
     query_obj = {
         'size': size,
         "sort": [
@@ -65,7 +67,7 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
                         "should": [  #
                             {
                                 "match": {
-                                    "name": {
+                                    name_field: {
                                         "query": user_query,
                                         "fuzziness": "1",
                                         "prefix_length": 2,
@@ -89,7 +91,7 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
                                     "type": "phrase",
                                     "slop": "6",
                                     "minimum_should_match": "2<75%",
-                                    "fields": ["name^10", "name.hyphens^10", "shortDescription^5",
+                                    "fields": [f"{name_field}^10", "name.hyphens^10", "shortDescription^5",
                                                "longDescription^5", "department^0.5", "sku", "manufacturer", "features",
                                                "categoryPath"]
                                 }
@@ -167,18 +169,6 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
             }
         }
     }
-    if synonyms: 
-        query_obj["query"]["function_score"]["query"]["bool"]["should"].append({       
-            "match": {
-                "name.synonyms": {
-                    "query": user_query,
-                    "fuzziness": "1",
-                    "prefix_length": 2,
-                    # short words are often acronyms or usually not misspelled, so don't edit
-                    "boost": 0.01
-                }
-            }
-        })
     if click_prior_query is not None and click_prior_query != "":
         query_obj["query"]["function_score"]["query"]["bool"]["should"].append({
             "query_string": {
@@ -200,6 +190,10 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
 
 def search(client, user_query, index="bbuy_products", sort="_score", sortDir="desc", synonyms=False):
     #### W3: classify the query
+    model = fasttext.load_model('/workspace/datasets/fasttext/queries_classifier_v2.bin')
+    predictions = model.predict(user_query)
+    labels = [res.replace('__label__', '') for res in predictions[0]]
+    scores = list(predictions[1])
     #### W3: create filters and boosts
     # Note: you may also want to modify the `create_query` method above
     query_obj = create_query(user_query, click_prior_query=None, filters=None, sort=sort, sortDir=sortDir, source=["name", "shortDescription"], synonyms=synonyms)
@@ -225,7 +219,7 @@ if __name__ == "__main__":
     general.add_argument('--user',
                          help='The OpenSearch admin.  If this is set, the program will prompt for password too. If not set, use default of admin/admin')
 
-    general.add_argument('--synonyms', type=bool, default=False, help='Run the query using synonyms os the name field')
+    general.add_argument('--synonyms', type=int, default=0, help='Run the query using synonyms os the name field')
     args = parser.parse_args()
 
     if len(vars(args)) == 0:
@@ -234,7 +228,7 @@ if __name__ == "__main__":
 
     host = args.host
     port = args.port
-    synonyms = args.synonyms
+    synonyms = True if args.synonyms != 0 else False
 
     if args.user:
         password = getpass()
