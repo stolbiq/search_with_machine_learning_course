@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logging.basicConfig(format='%(levelname)s:%(message)s')
 
+
+from sentence_transformers import SentenceTransformer
+embedding_model = SentenceTransformer('paraphrase-MiniLM-L6-v2')
+
 # expects clicks and impressions to be in the row
 def create_prior_queries_from_group(
         click_group):  # total impressions isn't currently used, but it mayb worthwhile at some point
@@ -50,145 +54,159 @@ def create_prior_queries(doc_ids, doc_id_weights,
 
 
 # Hardcoded query here.  Better to use search templates or other query config.
-def create_query(user_query, click_prior_query, filters, sort="_score", sortDir="desc", size=10, source=None, synonyms=False):
+def create_query(user_query, click_prior_query, filters, sort="_score", sortDir="desc", size=10, source=None, synonyms=False, embeddings=False):
     name_field = "name.synonyms" if synonyms else "name"
-    query_obj = {
-        'size': size,
-        "sort": [
-            {sort: {"order": sortDir}}
-        ],
-        "query": {
-            "function_score": {
+    if embeddings:
+            embedding = embedding_model.encode([user_query])[0]
+            query_obj = {
+                "size": 3,
                 "query": {
-                    "bool": {
-                        "must": [
-
-                        ],
-                        "should": [  #
-                            {
-                                "match": {
-                                    name_field: {
-                                        "query": user_query,
-                                        "fuzziness": "1",
-                                        "prefix_length": 2,
-                                        # short words are often acronyms or usually not misspelled, so don't edit
-                                        "boost": 0.01
-                                    }
-                                }
-                            },
-                            {
-                                "match_phrase": {  # near exact phrase match
-                                    "name.hyphens": {
-                                        "query": user_query,
-                                        "slop": 1,
-                                        "boost": 50
-                                    }
-                                }
-                            },
-                            {
-                                "multi_match": {
-                                    "query": user_query,
-                                    "type": "phrase",
-                                    "slop": "6",
-                                    "minimum_should_match": "2<75%",
-                                    "fields": [f"{name_field}^10", "name.hyphens^10", "shortDescription^5",
-                                               "longDescription^5", "department^0.5", "sku", "manufacturer", "features",
-                                               "categoryPath"]
-                                }
-                            },
-                            {
-                                "terms": {
-                                    # Lots of SKUs in the query logs, boost by it, split on whitespace so we get a list
-                                    "sku": user_query.split(),
-                                    "boost": 50.0
-                                }
-                            },
-                            {  # lots of products have hyphens in them or other weird casing things like iPad
-                                "match": {
-                                    "name.hyphens": {
-                                        "query": user_query,
-                                        "operator": "OR",
-                                        "minimum_should_match": "2<75%"
-                                    }
-                                }
-                            }
-                        ],
-                        "minimum_should_match": 1,
-                        "filter": filters  #
-                    }
-                },
-                "boost_mode": "multiply",  # how _score and functions are combined
-                "score_mode": "sum",  # how functions are combined
-                "functions": [
-                    {
-                        "filter": {
-                            "exists": {
-                                "field": "salesRankShortTerm"
-                            }
-                        },
-                        "gauss": {
-                            "salesRankShortTerm": {
-                                "origin": "1.0",
-                                "scale": "100"
-                            }
-                        }
-                    },
-                    {
-                        "filter": {
-                            "exists": {
-                                "field": "salesRankMediumTerm"
-                            }
-                        },
-                        "gauss": {
-                            "salesRankMediumTerm": {
-                                "origin": "1.0",
-                                "scale": "1000"
-                            }
-                        }
-                    },
-                    {
-                        "filter": {
-                            "exists": {
-                                "field": "salesRankLongTerm"
-                            }
-                        },
-                        "gauss": {
-                            "salesRankLongTerm": {
-                                "origin": "1.0",
-                                "scale": "1000"
-                            }
-                        }
-                    },
-                    {
-                        "script_score": {
-                            "script": "0.0001"
+                    "knn": {
+                    "embedding": {
+                        "vector": embedding,
+                        "k": 3
                         }
                     }
-                ]
+                }
+            }
+    else:
+        query_obj = {
+            'size': size,
+            "sort": [
+                {sort: {"order": sortDir}}
+            ],
+            "query": {
+                "function_score": {
+                    "query": {
+                        "bool": {
+                            "must": [
 
+                            ],
+                            "should": [  #
+                                {
+                                    "match": {
+                                        name_field: {
+                                            "query": user_query,
+                                            "fuzziness": "1",
+                                            "prefix_length": 2,
+                                            # short words are often acronyms or usually not misspelled, so don't edit
+                                            "boost": 0.01
+                                        }
+                                    }
+                                },
+                                {
+                                    "match_phrase": {  # near exact phrase match
+                                        "name.hyphens": {
+                                            "query": user_query,
+                                            "slop": 1,
+                                            "boost": 50
+                                        }
+                                    }
+                                },
+                                {
+                                    "multi_match": {
+                                        "query": user_query,
+                                        "type": "phrase",
+                                        "slop": "6",
+                                        "minimum_should_match": "2<75%",
+                                        "fields": [f"{name_field}^10", "name.hyphens^10", "shortDescription^5",
+                                                "longDescription^5", "department^0.5", "sku", "manufacturer", "features",
+                                                "categoryPath"]
+                                    }
+                                },
+                                {
+                                    "terms": {
+                                        # Lots of SKUs in the query logs, boost by it, split on whitespace so we get a list
+                                        "sku": user_query.split(),
+                                        "boost": 50.0
+                                    }
+                                },
+                                {  # lots of products have hyphens in them or other weird casing things like iPad
+                                    "match": {
+                                        "name.hyphens": {
+                                            "query": user_query,
+                                            "operator": "OR",
+                                            "minimum_should_match": "2<75%"
+                                        }
+                                    }
+                                }
+                            ],
+                            "minimum_should_match": 1,
+                            "filter": filters  #
+                        }
+                    },
+                    "boost_mode": "multiply",  # how _score and functions are combined
+                    "score_mode": "sum",  # how functions are combined
+                    "functions": [
+                        {
+                            "filter": {
+                                "exists": {
+                                    "field": "salesRankShortTerm"
+                                }
+                            },
+                            "gauss": {
+                                "salesRankShortTerm": {
+                                    "origin": "1.0",
+                                    "scale": "100"
+                                }
+                            }
+                        },
+                        {
+                            "filter": {
+                                "exists": {
+                                    "field": "salesRankMediumTerm"
+                                }
+                            },
+                            "gauss": {
+                                "salesRankMediumTerm": {
+                                    "origin": "1.0",
+                                    "scale": "1000"
+                                }
+                            }
+                        },
+                        {
+                            "filter": {
+                                "exists": {
+                                    "field": "salesRankLongTerm"
+                                }
+                            },
+                            "gauss": {
+                                "salesRankLongTerm": {
+                                    "origin": "1.0",
+                                    "scale": "1000"
+                                }
+                            }
+                        },
+                        {
+                            "script_score": {
+                                "script": "0.0001"
+                            }
+                        }
+                    ]
+
+                }
             }
         }
-    }
-    if click_prior_query is not None and click_prior_query != "":
-        query_obj["query"]["function_score"]["query"]["bool"]["should"].append({
-            "query_string": {
-                # This may feel like cheating, but it's really not, esp. in ecommerce where you have all this prior data,  You just can't let the test clicks leak in, which is why we split on date
-                "query": click_prior_query,
-                "fields": ["_id"]
-            }
-        })
-    if user_query == "*" or user_query == "#":
-        # replace the bool
-        try:
-            query_obj["query"] = {"match_all": {}}
-        except:
-            print("Couldn't replace query for *")
-    if source is not None:  # otherwise use the default and retrieve all source
-        query_obj["_source"] = source
+        if click_prior_query is not None and click_prior_query != "":
+            query_obj["query"]["function_score"]["query"]["bool"]["should"].append({
+                "query_string": {
+                    # This may feel like cheating, but it's really not, esp. in ecommerce where you have all this prior data,  You just can't let the test clicks leak in, which is why we split on date
+                    "query": click_prior_query,
+                    "fields": ["_id"]
+                }
+            })
+        if user_query == "*" or user_query == "#":
+            # replace the bool
+            try:
+                query_obj["query"] = {"match_all": {}}
+            except:
+                print("Couldn't replace query for *")
+        if source is not None:  # otherwise use the default and retrieve all source
+            query_obj["_source"] = source
     return query_obj
 
 
-def search(client, user_query, index="bbuy_products", sort="_score", sortDir="desc", synonyms=False):
+def search(client, user_query, index="bbuy_products", sort="_score", sortDir="desc", synonyms=False, embeddings=False):
     #### W3: classify the query
     model = fasttext.load_model('/workspace/datasets/fasttext/queries_classifier_v2.bin')
     threshold = 0.5
@@ -218,7 +236,7 @@ def search(client, user_query, index="bbuy_products", sort="_score", sortDir="de
 
 
     # Note: you may also want to modify the `create_query` method above
-    query_obj = create_query(user_query, click_prior_query=None, filters=filters, sort=sort, sortDir=sortDir, source=["name", "shortDescription"], synonyms=synonyms)
+    query_obj = create_query(user_query, click_prior_query=None, filters=filters, sort=sort, sortDir=sortDir, source=["name", "shortDescription"], synonyms=synonyms, embeddings=embeddings)
     logging.info(query_obj)
     response = client.search(query_obj, index=index)
     if response and response['hits']['hits'] and len(response['hits']['hits']) > 0:
@@ -241,7 +259,8 @@ if __name__ == "__main__":
     general.add_argument('--user',
                          help='The OpenSearch admin.  If this is set, the program will prompt for password too. If not set, use default of admin/admin')
 
-    # general.add_argument('--synonyms', type=int, default=0, help='Run the query using synonyms os the name field')
+    general.add_argument('--synonyms', help='Run the query using synonyms os the name field')
+    general.add_argument('--vector', help='Run the query using embeddings search')
     args = parser.parse_args()
 
     if len(vars(args)) == 0:
@@ -250,7 +269,10 @@ if __name__ == "__main__":
 
     host = args.host
     port = args.port
-    synonyms = True
+    if args.vector:
+        embeddings = True
+    if args.synonyms:
+        synonyms = True
 
     if args.user:
         password = getpass()
@@ -276,7 +298,7 @@ if __name__ == "__main__":
         query = line.rstrip()
         if query == "Exit":
             break
-        search(client=opensearch, user_query=query, index=index_name, synonyms=synonyms)
+        search(client=opensearch, user_query=query, index=index_name, synonyms=synonyms, embeddings=embeddings)
 
         print(query_prompt)
 
