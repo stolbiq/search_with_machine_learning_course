@@ -259,8 +259,8 @@ if __name__ == "__main__":
     general.add_argument('--user',
                          help='The OpenSearch admin.  If this is set, the program will prompt for password too. If not set, use default of admin/admin')
 
-    general.add_argument('--synonyms', help='Run the query using synonyms os the name field')
-    general.add_argument('--vector', help='Run the query using embeddings search')
+    # general.add_argument('--synonyms', help='Run the query using synonyms os the name field')
+    # general.add_argument('--vector', help='Run the query using embeddings search')
     args = parser.parse_args()
 
     if len(vars(args)) == 0:
@@ -269,10 +269,9 @@ if __name__ == "__main__":
 
     host = args.host
     port = args.port
-    if args.vector:
-        embeddings = True
-    if args.synonyms:
-        synonyms = True
+    
+    embeddings = True
+    synonyms = True
 
     if args.user:
         password = getpass()
